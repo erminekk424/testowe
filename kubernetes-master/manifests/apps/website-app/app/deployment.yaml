@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  selector:
+    matchLabels:
+      app: app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+#      enableServiceLinks: false
+      imagePullSecrets:
+        - name: dzikshop-docker-registry
+      containers:
+        - name: dzikshop-app
+          image: dzikshop-app
+#          command: [ "sleep", "infinity" ]
+#          env:
+#            - name: DB_HOST
+#              value: dzikshop-postgresql.dzikshop-app.svc.cluster.local
+#            - name: REDIS_HOST
+#              value: dzikshop-redis-master.dzikshop-app.svc.cluster.local
+          #          env:
+          #            - name: WITH_SCHEDULER ping dzikshop-postgresql.dzikshop-app.svc.cluster.local
+          #              value: "true"
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              memory: "2048Mi"
+              cpu: "500m"
+            requests:
+              memory: "1024Mi"
+              cpu: "250m"
+          readinessProbe:
+            httpGet:
+              path: /up
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /up
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 5
+          volumeMounts:
+            - name: app-env-volume
+              mountPath: /var/www/html/.env.production
+              subPath: app.env
+            - name: app-logs-volume
+              mountPath: /var/www/html/storage/logs
+      volumes:
+        - name: app-env-volume
+          configMap:
+            name: app-env
+        - name: app-logs-volume
+          persistentVolumeClaim:
+            claimName: app-logs-pvc

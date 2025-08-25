@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  selector:
+    matchLabels:
+      app: app
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      imagePullSecrets:
+        - name: dzikshop-docker-registry
+#      enableServiceLinks: false
+      initContainers:
+        - name: init-warehouse-file
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              cat << 'EOF' > /data/warehouse.json
+              {
+                  "accounts": {
+                  },
+                  "warehouse": {
+                  },
+                  "products": {
+                  }
+              }
+              EOF
+          volumeMounts:
+            - name: bot-database-volume
+              mountPath: /data
+      containers:
+        - name: dzikshop-bot
+          image: dzikshop-bot
+#          command: [ "ping", "app.dzikshop-app.svc.cluster.local" ]
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+#          readinessProbe:
+#            httpGet:
+#              path: /up
+#              port: 8000
+#            initialDelaySeconds: 5
+#            periodSeconds: 10
+#            timeoutSeconds: 3
+#            failureThreshold: 3
+#          livenessProbe:
+#            httpGet:
+#              path: /up
+#              port: 8000
+#            initialDelaySeconds: 10
+#            periodSeconds: 20
+#            timeoutSeconds: 3
+#            failureThreshold: 5
+          volumeMounts:
+#            - name: bot-config-volume
+#              mountPath: /app/settings/config.js
+#              subPath: config.js
+            - name: bot-database-volume
+              mountPath: /app/database/warehouse.json
+              subPath: warehouse.json
+      volumes:
+#        - name: bot-config-volume
+#          configMap:
+#            name: bot-config
+        - name: bot-database-volume
+          persistentVolumeClaim:
+            claimName: bot-database-pvc

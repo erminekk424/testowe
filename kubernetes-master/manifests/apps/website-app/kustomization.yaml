@@ -1,0 +1,59 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dzikshop-app
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+resources:
+  - namespace.yaml
+  - app/deployment.yaml
+  - app/ingress.yaml
+  - app/pvc.yaml
+  - app/service.yaml
+
+secretGenerator:
+  - name: dzikshop-ssl
+    type: kubernetes.io/tls
+#    namespace: dzikshop-app
+    files:
+      - tls.crt=secrets/server.crt
+      - tls.key=secrets/server.key
+      - ca.crt=secrets/ca.crt
+  - name: dzikshop-docker-registry
+    type: kubernetes.io/dockerconfigjson
+    files:
+      - .dockerconfigjson=secrets/dockerconfig.json
+
+configMapGenerator:
+  - name: app-env
+    files:
+      - secrets/app.env
+
+images:
+  - name: dzikshop-app
+    newName: registry.gitlab.com/zergly/projects/dzikshop-pl/website
+    newTag: latest
+
+#helmCharts:
+#  - name: nginx-ingress-controller
+#    repo: https://charts.bitnami.com/bitnami
+#    version: "12.0.7"
+#    namespace: default
+#    releaseName: nginx-ingress-controller
+#    valuesFile: helm-charts/nginx-ingress/values.yaml
+#
+#  - name: postgresql
+#    repo: https://charts.bitnami.com/bitnami
+#    version: "16.7.26"
+#    releaseName: dzikshop-postgresql
+#    namespace: dzikshop-app
+#    valuesFile: helm-charts/postgresql/values.yaml
+#
+#  - name: redis
+#    repo: https://charts.bitnami.com/bitnami
+#    version: "22.0.3"
+#    releaseName: dzikshop-redis
+#    namespace: dzikshop-app
+#    valuesFile: helm-charts/redis/values.yaml
